@@ -27,9 +27,9 @@ pub struct ContainerRunnerBuilder {
 }
 
 impl ContainerRunnerBuilder {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: String) -> Self {
         ContainerRunnerBuilder {
-            name: name.to_string(),
+            name,
             image: None,
             port_bindings: Vec::new(),
             env_vars: Vec::new(),
@@ -37,8 +37,8 @@ impl ContainerRunnerBuilder {
         }
     }
 
-    pub fn image(mut self, image: &str) -> Self {
-        self.image = Some(image.to_owned());
+    pub fn image(mut self, image: String) -> Self {
+        self.image = Some(image);
         self
     }
 
@@ -98,6 +98,7 @@ impl ContainerRunner {
             env: Some(envs),
             host_config,
             healthcheck: self.healthcheck,
+            attach_stdout: Some(true),
             ..Default::default()
         };
 

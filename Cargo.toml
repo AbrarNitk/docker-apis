@@ -3,8 +3,12 @@ name = "docker-apis"
 version = "0.1.0"
 edition = "2021"
 
+
+
 [dependencies]
 anyhow = "1.0.95"
 bollard = "0.18.1"
 futures = "0.3.31"
-tokio = { version = "1.42.0", features = ["time"] }
+tokio = { version = "1.42.0", features = ["time", "rt-multi-thread", "macros"] }
+
+
