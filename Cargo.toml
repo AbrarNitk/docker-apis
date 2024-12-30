@@ -1,0 +1,8 @@
+[package]
+name = "docker-apis"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.95"
+bollard = "0.18.1"
