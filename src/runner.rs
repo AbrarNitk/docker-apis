@@ -2,6 +2,7 @@ use bollard::image::CreateImageOptions;
 use bollard::models::HealthConfig;
 use bollard::Docker;
 use futures::StreamExt;
+use std::num::IntErrorKind::NegOverflow;
 
 pub struct ContainerRunner {
     name: String,
@@ -89,5 +90,26 @@ impl ContainerRunner {
         }
 
         Ok(())
+    }
+
+    async fn is_running(&self) -> anyhow::Result<bool> {
+        let containers = self.docker.list_containers(None).await?;
+        for container in containers {
+            let names = match container.names {
+                Some(names) => names,
+                None => continue,
+            };
+
+            let any_running = names
+                .iter()
+                .any(|name| name.eq(&self.name) || name.eq(&format!("/{}", self.name)));
+
+            if any_running {
+                println!("container is already running: {}", self.name);
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 }
