@@ -3,7 +3,7 @@ use bollard::Docker;
 
 pub struct RunningContainer {
     pub name: String,
-    docker: Docker,
+    pub(crate) docker: Docker,
 }
 
 impl RunningContainer {

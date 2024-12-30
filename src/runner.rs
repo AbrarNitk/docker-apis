@@ -1,8 +1,13 @@
+use crate::running::remove;
+use bollard::container::{Config, CreateContainerOptions, StartContainerOptions};
 use bollard::image::CreateImageOptions;
-use bollard::models::HealthConfig;
+use bollard::models::{
+    ContainerState, ContainerStateStatusEnum, Health, HealthConfig, HealthStatusEnum, HostConfig,
+    PortBinding,
+};
 use bollard::Docker;
 use futures::StreamExt;
-use std::num::IntErrorKind::NegOverflow;
+use std::collections::HashMap;
 
 pub struct ContainerRunner {
     name: String,
@@ -68,6 +73,75 @@ impl ContainerRunnerBuilder {
 }
 
 impl ContainerRunner {
+    pub async fn run(self) -> anyhow::Result<super::running::RunningContainer> {
+        if self.is_running().await? {
+            println!("removing already running container: {}", self.name);
+            remove(&self.docker, self.name.as_str()).await?;
+            println!("removed already running container: {}", self.name);
+        }
+
+        self.pull_image().await?;
+
+        let host_config = Some(HostConfig {
+            port_bindings: self.port_bindings(),
+            ..Default::default()
+        });
+
+        let envs = self
+            .env_vars
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>();
+
+        let config = Config {
+            image: Some(self.image),
+            env: Some(envs),
+            host_config,
+            healthcheck: self.healthcheck,
+            ..Default::default()
+        };
+
+        let options = CreateContainerOptions {
+            name: self.name.clone(),
+            platform: None,
+        };
+
+        let _ = self.docker.create_container(Some(options), config).await?;
+
+        self.docker
+            .start_container(self.name.as_str(), None::<StartContainerOptions<String>>)
+            .await?;
+
+        let start = std::time::Instant::now();
+        loop {
+            let inspect_container = self.docker.inspect_container(&self.name, None).await?;
+            if let Some(ContainerState {
+                status: Some(ContainerStateStatusEnum::RUNNING),
+                health:
+                    Some(Health {
+                        status: Some(HealthStatusEnum::HEALTHY),
+                        ..
+                    }),
+                ..
+            }) = inspect_container.state
+            {
+                println!("Container is running and healthy");
+                break;
+            }
+
+            if start.elapsed().as_secs() > 30 {
+                return Err(anyhow::anyhow!("container failed to start"));
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+
+        Ok(crate::running::RunningContainer {
+            name: self.name,
+            docker: self.docker,
+        })
+    }
+
     async fn pull_image(&self) -> anyhow::Result<()> {
         let available_images = self.docker.list_images::<String>(None).await?;
         for image in available_images {
@@ -93,7 +167,7 @@ impl ContainerRunner {
     }
 
     async fn is_running(&self) -> anyhow::Result<bool> {
-        let containers = self.docker.list_containers(None).await?;
+        let containers = self.docker.list_containers::<&str>(None).await?;
         for container in containers {
             let names = match container.names {
                 Some(names) => names,
@@ -105,11 +179,35 @@ impl ContainerRunner {
                 .any(|name| name.eq(&self.name) || name.eq(&format!("/{}", self.name)));
 
             if any_running {
-                println!("container is already running: {}", self.name);
+                println!("container is already running container: {}", self.name);
                 return Ok(true);
             }
         }
 
         Ok(false)
+    }
+}
+
+impl ContainerRunner {
+    fn port_bindings(&self) -> Option<HashMap<String, Option<Vec<PortBinding>>>> {
+        let port_bindings: HashMap<_, _> = self
+            .port_bindings
+            .iter()
+            .map(|(hp, cp)| {
+                (
+                    format!("{cp}/tcp"),
+                    Some(vec![PortBinding {
+                        host_ip: Some("127.0.0.1".to_string()),
+                        host_port: Some(format!("{hp}/tcp")),
+                    }]),
+                )
+            })
+            .collect();
+
+        if port_bindings.is_empty() {
+            None
+        } else {
+            Some(port_bindings)
+        }
     }
 }
