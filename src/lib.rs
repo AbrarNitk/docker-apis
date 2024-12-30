@@ -10,6 +10,7 @@ pub struct RunningContainer {
 
 impl RunningContainer {
     pub async fn start(&self) -> anyhow::Result<()> {
+        start(&self.docker, self.name.as_str()).await?;
         Ok(())
     }
 
@@ -19,6 +20,7 @@ impl RunningContainer {
     }
 
     pub async fn stop(&self) -> anyhow::Result<()> {
+        stop(&self.docker, self.name.as_str()).await?;
         Ok(())
     }
 
