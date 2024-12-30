@@ -1,6 +1,6 @@
+use bollard::image::CreateImageOptions;
 use bollard::models::HealthConfig;
 use bollard::Docker;
-use bollard::image::CreateImageOptions;
 use futures::StreamExt;
 
 pub struct ContainerRunner {
@@ -66,15 +66,14 @@ impl ContainerRunnerBuilder {
     }
 }
 
-
 impl ContainerRunner {
     async fn pull_image(&self) -> anyhow::Result<()> {
-        let available_images =  self.docker.list_images::<String>(None).await?;
+        let available_images = self.docker.list_images::<String>(None).await?;
         for image in available_images {
             let exists = image.repo_tags.iter().any(|t| t.eq(&self.name));
             if exists {
                 println!("Docker image is already pulled: {}", self.image);
-                return Ok(())
+                return Ok(());
             }
         }
 
