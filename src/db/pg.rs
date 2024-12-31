@@ -146,6 +146,7 @@ mod tests {
                 .await
                 .expect("cannot create the container");
 
+        // cli: psql -h 127.0.0.1 -d db2 -U user2 -p 5433
         println!("container 2 is running");
 
         test_pool("postgres://user2:pass2@127.0.0.1:5433/db2").await?;

@@ -100,7 +100,7 @@ mod tests {
             .expect("cannot create the container");
         println!("container 1 is running");
 
-        // crate::db::pg::tests::test_pool("postgres://postgres:pass@127.0.0.1:5431/postgres").await?;
+        test_pool("mysql://root-demo:pass@127.0.0.1:3306/mysqldb").await?;
 
         rc.stop().await?;
         rc.remove().await?;
@@ -115,12 +115,40 @@ mod tests {
                 .expect("cannot create the container");
         println!("container 1 is running");
 
-        // mysql -u user --host=127.0.0.1 --database=db --port=3307 --password=pass
+        // cli: mysql -u user --host=127.0.0.1 --database=db --port=3307 --password=pass
 
-        // crate::db::pg::tests::test_pool("mysql://user:pass@127.0.0.1:3306/db").await?;
+        test_pool("mysql://user:pass@127.0.0.1:3307/db").await?;
 
         rc.stop().await?;
         rc.remove().await?;
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_mysql_with2() -> anyhow::Result<()> {
+        let rc =
+            super::running_container_with("demo-container-2", "user2", "pass2", "db2", 3308, None)
+                .await
+                .expect("cannot create the container");
+        println!("container 1 is running");
+
+        // cli: mysql -u user --host=127.0.0.1 --database=db --port=3307 --password=pass
+
+        test_pool("mysql://user2:pass2@127.0.0.1:3308/db2").await?;
+
+        rc.stop().await?;
+        rc.remove().await?;
+        Ok(())
+    }
+
+    async fn test_pool(url: &str) -> anyhow::Result<()> {
+        let pool = pool(url)?;
+        let _conn = pool.get_conn().await?;
+        Ok(())
+    }
+
+    fn pool(url: &str) -> anyhow::Result<mysql_async::Pool> {
+        let mysql_pool = mysql_async::Pool::from_url(url)?;
+        Ok(mysql_pool)
     }
 }
