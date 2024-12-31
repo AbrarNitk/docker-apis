@@ -1,6 +1,5 @@
 use crate::runner::ContainerRunnerBuilder;
 use crate::running::RunningContainer;
-use bb8_postgres::{tokio_postgres::NoTls, PostgresConnectionManager};
 use bollard::models::HealthConfig;
 
 /// Container with default database
@@ -87,20 +86,21 @@ fn container_registry() -> String {
         .unwrap_or_else(|_| "public.ecr.aws/docker/library/".to_string())
 }
 
-pub async fn pool(
-    url: &str,
-) -> anyhow::Result<bb8_postgres::bb8::Pool<PostgresConnectionManager<NoTls>>> {
-    let manager = bb8_postgres::PostgresConnectionManager::new_from_stringlike(url, NoTls)?;
-    let pool = bb8_postgres::bb8::Pool::builder()
-        .max_size(30)
-        .build(manager)
-        .await?;
-    Ok(pool)
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::pg::pool;
+    use bb8_postgres::tokio_postgres::NoTls;
+    use bb8_postgres::PostgresConnectionManager;
+
+    pub async fn pool(
+        url: &str,
+    ) -> anyhow::Result<bb8_postgres::bb8::Pool<PostgresConnectionManager<NoTls>>> {
+        let manager = bb8_postgres::PostgresConnectionManager::new_from_stringlike(url, NoTls)?;
+        let pool = bb8_postgres::bb8::Pool::builder()
+            .max_size(30)
+            .build(manager)
+            .await?;
+        Ok(pool)
+    }
 
     async fn test_pool(url: &str) -> anyhow::Result<()> {
         let pool = pool(url).await?;

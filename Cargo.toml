@@ -7,9 +7,11 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.95"
-bb8-postgres = "0.9.0"
 bollard = "0.18.1"
 futures = "0.3.31"
 tokio = { version = "1.42.0", features = ["time", "rt-multi-thread", "macros"] }
 
 
+[dev-dependencies]
+mysql_async = "0.34.2"
+bb8-postgres = "0.9.0"

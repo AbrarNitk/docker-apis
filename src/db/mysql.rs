@@ -119,8 +119,8 @@ mod tests {
 
         // crate::db::pg::tests::test_pool("mysql://user:pass@127.0.0.1:3306/db").await?;
 
-        // rc.stop().await?;
-        // rc.remove().await?;
+        rc.stop().await?;
+        rc.remove().await?;
         Ok(())
     }
 }
