@@ -36,6 +36,8 @@ pub async fn running_container(
         .run()
         .await?;
 
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
     Ok(running_container)
 }
 
@@ -69,6 +71,8 @@ pub async fn running_container_with(
         .build()?
         .run()
         .await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
     Ok(running_container)
 }
