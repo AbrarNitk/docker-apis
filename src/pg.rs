@@ -1,5 +1,6 @@
 use crate::runner::ContainerRunnerBuilder;
 use crate::running::RunningContainer;
+use bb8_postgres::{tokio_postgres::NoTls, PostgresConnectionManager};
 use bollard::models::HealthConfig;
 
 /// Container with default database
@@ -82,38 +83,72 @@ fn container_registry() -> String {
         .unwrap_or_else(|_| "public.ecr.aws/docker/library/".to_string())
 }
 
+pub async fn pool(
+    url: &str,
+) -> anyhow::Result<bb8_postgres::bb8::Pool<PostgresConnectionManager<NoTls>>> {
+    let manager = bb8_postgres::PostgresConnectionManager::new_from_stringlike(url, NoTls)?;
+    let pool = bb8_postgres::bb8::Pool::builder()
+        .max_size(30)
+        .build(manager)
+        .await?;
+    Ok(pool)
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::pg::pool;
+
+    async fn test_pool(url: &str) -> anyhow::Result<()> {
+        let pool = pool(url).await?;
+        let _conn = pool.get().await?;
+        Ok(())
+    }
 
     #[tokio::test]
-    async fn test_pg() {
+    async fn test_pg() -> anyhow::Result<()> {
         let rc = super::running_container("demo-container-1", 5431, None)
             .await
             .expect("cannot create the container");
         println!("container 1 is running");
-        rc.stop().await.unwrap();
-        rc.remove().await.unwrap();
+
+        test_pool("postgres://postgres:pass@127.0.0.1:5431/postgres").await?;
+
+        rc.stop().await?;
+        rc.remove().await?;
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_pg_2() {
+    async fn test_pg_2() -> anyhow::Result<()> {
         let rc =
             super::running_container_with("demo-container-2", "user", "pass", "db", 5432, None)
                 .await
                 .expect("cannot create the container");
         println!("container 2 is running");
-        rc.stop().await.unwrap();
-        rc.remove().await.unwrap();
+
+        test_pool("postgres://user:pass@127.0.0.1:5432/db").await?;
+
+        rc.stop().await?;
+        rc.remove().await?;
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_pg_3() {
+    async fn test_pg_3() -> anyhow::Result<()> {
         let rc =
             super::running_container_with("demo-container-3", "user2", "pass2", "db2", 5433, None)
                 .await
                 .expect("cannot create the container");
+
         println!("container 2 is running");
-        rc.stop().await.unwrap();
-        rc.remove().await.unwrap();
+
+        test_pool("postgres://user2:pass2@127.0.0.1:5433/db2").await?;
+
+        rc.stop().await?;
+        rc.remove().await?;
+
+        Ok(())
     }
 }
